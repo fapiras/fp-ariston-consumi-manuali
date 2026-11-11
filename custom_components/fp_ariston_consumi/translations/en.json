@@ -1,0 +1,20 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "FP Ariston Manual Energy",
+        "description": "Choose a water heater configured in Ariston NET. Energy is read only when you press Refresh energy.",
+        "data": {
+          "device": "Ariston NET device"
+        }
+      }
+    },
+    "abort": {
+      "ariston_missing": "Configure a device in Ariston NET first.",
+      "already_configured": "This device is already configured."
+    },
+    "error": {
+      "invalid_device": "Invalid device."
+    }
+  }
+}
