@@ -13,7 +13,7 @@ jobs:
       - run: pip install pytest pytest-asyncio aiohttp requests ruff
       - run: python -m compileall -q custom_components
       - run: ruff check custom_components tests
-      - run: pytest tests/unit -q
+      - run: python -m pytest tests/unit -q
   home-assistant:
     runs-on: ubuntu-latest
     steps:
@@ -22,4 +22,4 @@ jobs:
         with:
           python-version: '3.14'
       - run: pip install pytest-homeassistant-custom-component==0.13.375 requests
-      - run: pytest tests/ha -q
+      - run: python -m pytest tests/ha -q
