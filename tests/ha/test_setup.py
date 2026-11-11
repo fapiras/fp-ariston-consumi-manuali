@@ -20,7 +20,7 @@ def device_attributes(gateway='fake-gw', name='Boiler A'):
             DeviceAttribute.SYS: SystemType.VELIS.value, VelisDeviceAttribute.WHE_TYPE: WheType.LydosHybrid.value}
 
 
-def fake_device():
+def fake_device(gateway='fake-gw', name='Boiler A'):
     api = MagicMock()
     api.async_get_features_for_device = AsyncMock(return_value={DeviceFeatures.HAS_METERING:True})
     api.async_get_velis_plant_data = AsyncMock(return_value={
@@ -43,7 +43,7 @@ def fake_device():
     api.async_set_lydos_temperature = AsyncMock()
     api.async_set_lydos_mode = AsyncMock()
     api.async_set_velis_plant_setting = AsyncMock()
-    return AristonLydosHybridDevice(api, device_attributes())
+    return AristonLydosHybridDevice(api, device_attributes(gateway, name))
 
 
 async def test_all_platforms_setup_without_old_integration_or_energy_polling(hass):
@@ -111,3 +111,32 @@ async def test_core_write_commands_use_bundled_client_and_no_energy(hass):
             await AristonNumber(coordinator, description).async_set_native_value(12)
     device.api._async_get.assert_not_awaited()
     device.api.async_get_consumptions_sequences.assert_not_awaited()
+
+
+async def test_two_boilers_share_one_login_and_unload_independently(hass):
+    a, b = fake_device('a', 'Boiler A'), fake_device('b', 'Boiler B')
+    entries = []
+    for device in (a,b):
+        entry = MockConfigEntry(domain=DOMAIN, unique_id=f'{DOMAIN}:{device.gateway}', version=2,
+            title=device.name, data={CONF_USERNAME:'test@example.test',CONF_PASSWORD:'fake',CONF_DEVICE:device.attributes})
+        entry.add_to_hass(hass)
+        entries.append(entry)
+    async def hello(gateway, is_metric):
+        return {'a':a,'b':b}[gateway]
+    with patch.object(Ariston,'async_connect',new=AsyncMock(return_value=True)) as login, patch.object(
+        Ariston,'async_hello',side_effect=hello
+    ):
+        for entry in entries:
+            assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+        login.assert_awaited_once()
+        assert hass.states.get('switch.boiler_a_fp_power') is not None
+        assert hass.states.get('switch.boiler_b_fp_power') is not None
+        assert hass.states.get('button.boiler_a_fp_aggiorna_consumi') is not None
+        assert hass.states.get('button.boiler_b_fp_aggiorna_consumi') is not None
+        assert await hass.config_entries.async_unload(entries[0].entry_id)
+        assert entries[1].unique_id in hass.data[DOMAIN]
+        assert hass.states.get('switch.boiler_b_fp_power').state == 'on'
+        a.api._async_get.assert_not_awaited()
+        b.api._async_get.assert_not_awaited()
+        assert await hass.config_entries.async_unload(entries[1].entry_id)

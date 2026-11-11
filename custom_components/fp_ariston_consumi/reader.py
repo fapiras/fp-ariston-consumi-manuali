@@ -108,11 +108,18 @@ class ManualEnergyCoordinator(DataUpdateCoordinator):
             self.last_success_utc = datetime.now(timezone.utc).isoformat()
             self.last_error = None
             self.state = 'aggiornato'
+            # A valid cloud snapshot is visible even if persisting it fails.
+            self.async_set_updated_data(fresh)
             try:
                 await self._store.async_save({'readings': fresh, 'last_success_utc': self.last_success_utc})
-            except (ValueError, OSError):
+            except asyncio.CancelledError:
+                self.state = 'aggiornato_non_salvato'
+                self.last_error = 'Lettura riuscita; salvataggio locale interrotto'
+                self.async_update_listeners()
+                raise
+            except (ValueError, OSError, HomeAssistantError):
                 self.state = 'aggiornato_non_salvato'
                 self.last_error = 'Lettura riuscita; salvataggio locale fallito'
-            self.async_set_updated_data(fresh)
+                self.async_update_listeners()
         finally:
             self._busy = False

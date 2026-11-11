@@ -96,3 +96,31 @@ async def test_corrupt_cache_does_not_contact_cloud(hass):
     await c.async_restore_cache()
     assert c.last_success_utc is None
     c.device.api._async_get.assert_not_awaited()
+
+
+async def test_storage_failure_keeps_valid_reading_visible(hass):
+    c = make_coordinator(hass)
+    c._store = SimpleNamespace(async_save=AsyncMock(side_effect=OSError('disk full')))
+    await c.async_update_manually()
+    assert c.data['day_kwh'] == 3
+    assert c.last_success_utc is not None
+    assert c.state == 'aggiornato_non_salvato'
+    assert c.stale
+
+
+async def test_cancelled_storage_does_not_mix_old_values_with_new_timestamp(hass):
+    c = make_coordinator(hass)
+    started, finish = asyncio.Event(), asyncio.Event()
+    async def save(*args):
+        started.set()
+        await finish.wait()
+    c._store = SimpleNamespace(async_save=save)
+    task = asyncio.create_task(c.async_update_manually())
+    await started.wait()
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    assert c.data['day_kwh'] == 3
+    assert c.last_success_utc is not None
+    assert c.state == 'aggiornato_non_salvato'
+    assert c._busy is False

@@ -19,7 +19,9 @@ al suo client durante il funzionamento. Licenza MIT e crediti conservati:
   restituiti dal cloud. Nessuna lettura energetica all'avvio, su timer,
   dopo un comando, o attraverso un generico aggiornamento di un sensore.
 - Cache locale e ultima lettura valida mantenute in caso di errore cloud;
-  un errore energetico non rende indisponibili i comandi.
+  un errore energetico non mette in errore il coordinatore dei comandi.
+  Eventuali blocchi del cloud sull'intero account possono comunque coinvolgere
+  anche le altre richieste.
 
 I totali sono fotografie dei periodi API, **non** il consumo dalla prima accensione.
 Non vengono presentati come contatori `total_increasing` né uniti alle vecchie
