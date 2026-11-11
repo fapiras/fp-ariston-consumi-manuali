@@ -1,0 +1,20 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "FP Ariston Consumi Manuali",
+        "description": "Seleziona uno scaldabagno già configurato in Ariston NET. I consumi saranno letti solo premendo Aggiorna consumi.",
+        "data": {
+          "device": "Dispositivo Ariston NET"
+        }
+      }
+    },
+    "abort": {
+      "ariston_missing": "Configura prima un dispositivo in Ariston NET.",
+      "already_configured": "Questo dispositivo è già configurato."
+    },
+    "error": {
+      "invalid_device": "Dispositivo non valido."
+    }
+  }
+}
