@@ -15,7 +15,7 @@ from .vendor.ariston_net_api.base_device import AristonBaseDevice
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .const import DOMAIN
+from .const import COORDINATOR, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -58,6 +58,9 @@ class DeviceDataUpdateCoordinator(DataUpdateCoordinator):
         self.pending_writes: dict[str, PendingWrite] = {}
         self.write_lock = asyncio.Lock()
         self._verify_pending_writes = False
+        self._poll_settings = coordinator_name == COORDINATOR
+        self.settings_update_success = None
+        self.settings_error = None
 
     async def _async_refresh(
         self,
@@ -94,15 +97,29 @@ class DeviceDataUpdateCoordinator(DataUpdateCoordinator):
         """Poll once and normalize cloud failures for Home Assistant."""
         try:
             result = await self._async_device_update_state()
-            if hasattr(self.device, "async_update_settings"):
-                await self.device.async_update_settings()
-            return result
         except RateLimitException as error:
             raise UpdateFailed(
                 f"Ariston cloud rate limited; retry after {error.retry_after} seconds"
             ) from error
         except (ConnectionException, ClientError, TimeoutError) as error:
-            raise UpdateFailed(f"Ariston cloud request failed: {error}") from error
+            raise UpdateFailed(f"Ariston state request failed: {error}") from error
+
+        # A fresh state response must not be discarded because the separate
+        # settings endpoint fails. Keep its last valid cache, explicitly stale.
+        # Do not reauthenticate, retry immediately or request energy here.
+        if getattr(self, '_poll_settings', True) and hasattr(self.device, 'async_update_settings'):
+            try:
+                await self.device.async_update_settings()
+            except (ConnectionException, ClientError, TimeoutError) as error:
+                if getattr(self, 'settings_update_success', None) is not False:
+                    _LOGGER.warning('Ariston settings refresh failed; fresh device state remains available')
+                self.settings_update_success = False
+                code = error.args[0] if error.args and type(error.args[0]) is int else None
+                self.settings_error = f'HTTP {code}' if code else type(error).__name__
+            else:
+                self.settings_update_success = True
+                self.settings_error = None
+        return result
 
     async def async_execute_tracked_write(
         self,

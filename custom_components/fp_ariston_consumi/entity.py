@@ -62,9 +62,12 @@ class AristonEntity(CoordinatorEntity, ABC):
     def extra_state_attributes(self):
         """Return the holiday end date."""
         state_attributes = {}
+        if getattr(self.coordinator, '_poll_settings', False):
+            state_attributes['impostazioni_aggiornate'] = self.coordinator.settings_update_success
+            state_attributes['errore_lettura_impostazioni'] = self.coordinator.settings_error
 
         if self.entity_description.extra_states is None:
-            return None
+            return state_attributes or None
 
         for extra_state in self.entity_description.extra_states:
             device_method = extra_state.get(EXTRA_STATE_DEVICE_METHOD)

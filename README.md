@@ -1,6 +1,15 @@
 # Ariston FP
 
-**0.4.0-beta.1 — integrazione autonoma per Ariston Lydos Hybrid.**
+**0.4.0-beta.2 — integrazione autonoma per Ariston Lydos Hybrid.**
+
+La beta.2 separa gli errori delle impostazioni dalla lettura dello stato:
+se lo stato viene letto correttamente ma il successivo aggiornamento delle
+impostazioni fallisce, temperatura e stato restano disponibili. Le impostazioni
+conservano l'ultima cache, con attributi `impostazioni_aggiornate: false` ed
+`errore_lettura_impostazioni`. Un errore nella lettura dello stato continua a
+rendere indisponibili le entità: non si presenta una temperatura vecchia come
+attuale. Questa correzione non risolve un rifiuto generale del cloud né gli
+errori durante la prima inizializzazione e non aggiunge tentativi automatici.
 
 Controlli completi e consumi su richiesta, derivati dal lavoro MIT di Mauro
 Priori e fustom. Il client è incluso in uno spazio privato; Ariston NET non è
