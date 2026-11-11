@@ -1,9 +1,9 @@
 {
-  "title": "FP Ariston Consumi Manuali",
+  "title": "Ariston FP",
   "config": {
     "step": {
       "user": {
-        "title": "FP Ariston",
+        "title": "Ariston FP",
         "description": "Accedi al tuo account Ariston. La lettura di stato e temperature è periodica; i consumi vengono richiesti soltanto con Aggiorna consumi. Conserva la vecchia integrazione per il ripristino e disabilitala durante il collaudo per evitare sessioni concorrenti.",
         "data": {
           "username": "Email Ariston",

@@ -70,6 +70,9 @@ async def test_all_platforms_setup_without_old_integration_or_energy_polling(has
             'number.boiler_a_fp_anti_cooling_temperature', 'button.boiler_a_fp_aggiorna_consumi',
         }
         assert expected <= ids, expected - ids
+        assert 'select.boiler_a_fp_mese_consumi' in ids
+        assert 'sensor.boiler_a_fp_consumo_pdc_periodo_mensile' in ids
+        assert 'sensor.boiler_a_fp_consumo_resistenza_periodo_mensile' in ids
         assert hass.states.get('sensor.boiler_a_fp_current_temperature').state == '48.0'
         registry = er.async_get(hass)
         entries = er.async_entries_for_config_entry(registry, entry.entry_id)

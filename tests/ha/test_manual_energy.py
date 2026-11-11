@@ -168,6 +168,41 @@ async def test_old_generic_zero_cache_is_not_restored_as_hybrid_consumption(hass
     c.device.api._async_get.assert_not_awaited()
 
 
+async def test_month_selection_has_separate_channels_persists_and_never_fetches_cloud(hass):
+    from custom_components.fp_ariston_consumi.month_select import MonthSelect
+    from custom_components.fp_ariston_consumi.manual_sensor import FPManualEnergySensor, SENSOR_TYPES
+    c = make_coordinator(hass)
+    await c.async_update_manually()
+    c.months = {
+        '2026-09':{'pdc':7,'resistenza':3,'totale':10,'parziale':False,'last_success_utc':c.last_success_utc},
+        '2026-10':{'pdc':9,'resistenza':0,'totale':9,'parziale':False,'last_success_utc':c.last_success_utc},
+    }
+    selector = MonthSelect(c,None)
+    assert selector.options==['Ottobre 2026','Settembre 2026']
+    await selector.async_select_option('Settembre 2026')
+    assert c.value_for('month_kwh')==10
+    desc = next(d for d in SENSOR_TYPES if d.key=='pdc_month_kwh')
+    sensor = FPManualEnergySensor(c,None,desc,None)
+    assert sensor.native_value==7
+    assert sensor.extra_state_attributes['mese_selezionato']=='Settembre 2026'
+    c.device.api._async_get.assert_awaited_once()
+    restored = make_coordinator(hass)
+    await restored.async_restore_cache()
+    assert restored.selected_month=='2026-09'
+    assert restored.value_for('month_kwh','resistenza')==3
+    restored.device.api._async_get.assert_not_awaited()
+
+
+async def test_calendar_year_does_not_sum_previous_years(hass):
+    c = make_coordinator(hass)
+    c.calendar_capture_utc='2026-11-11T13:00:00+00:00'
+    c.months={'2025-12':{'pdc':100,'resistenza':20,'totale':120},
+              '2026-01':{'pdc':8,'resistenza':2,'totale':10},
+              '2026-11':{'pdc':3,'resistenza':0,'totale':3}}
+    assert c.value_for('year_kwh')==13
+    assert c.value_for('year_kwh','pdc')==11
+
+
 async def test_storage_failure_keeps_valid_reading_visible(hass):
     c = make_coordinator(hass)
     c._store = SimpleNamespace(async_save=AsyncMock(side_effect=OSError('disk full')))

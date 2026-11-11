@@ -7,6 +7,7 @@ import hashlib
 import logging
 import math
 from urllib.parse import quote
+from zoneinfo import ZoneInfo
 
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.storage import Store
@@ -20,6 +21,7 @@ _LOGGER = logging.getLogger(__name__)
 
 from .energy_report import ReportValidationError, report_structure
 from .hybrid_report import HYBRID_REPORT_PATH, REPORT_SOURCE, parse_hybrid_report
+from .calendar_report import calendar_months
 
 
 def concise_error(error: Exception) -> str:
@@ -58,6 +60,10 @@ class ManualEnergyCoordinator(DataUpdateCoordinator):
         self.missing_periods = []
         self.period_success_utc = dict.fromkeys(PERIOD_KEYS)
         self.period_details = {}
+        self.component_values = {key:{'pdc':None,'resistenza':None} for key in PERIOD_KEYS}
+        self.months = {}
+        self.selected_month = None
+        self.calendar_capture_utc = None
         self.state = 'mai_aggiornato'
         self._busy = False
 
@@ -102,8 +108,53 @@ class ManualEnergyCoordinator(DataUpdateCoordinator):
             return
         self.last_success_utc = stamp.isoformat()
         self.period_success_utc = period_times
+        self.months = stored.get('calendar_months', {})
+        self.selected_month = stored.get('selected_month')
+        if self.selected_month not in self.months:
+            self.selected_month = max(self.months,default=None)
+        self.component_values = stored.get('component_values', self.component_values)
+        self.calendar_capture_utc = stored.get('calendar_capture_utc')
         self.state = 'dati_memorizzati'
         self.async_set_updated_data(valid)
+
+    def value_for(self, period, component='totale'):
+        """One source for totals, separated channels and the selected month."""
+        if period == 'month_kwh':
+            return self.months.get(self.selected_month,{}).get(component)
+        if period == 'year_kwh':
+            if not self.calendar_capture_utc:
+                return None
+            year = self.reference_year
+            values = [v[component] for key,v in self.months.items() if key.startswith(str(year)+'-')]
+            return round(math.fsum(values),3) if values else None
+        if component == 'totale':
+            return self.data.get(period)
+        return self.component_values.get(period,{}).get(component)
+
+    @property
+    def reference_year(self):
+        if not self.calendar_capture_utc:
+            return None
+        return datetime.fromisoformat(self.calendar_capture_utc).astimezone(
+            ZoneInfo(self.hass.config.time_zone)).year
+
+    async def async_save_snapshot(self):
+        await self._store.async_save({
+            'readings':self.data, 'last_success_utc':self.last_success_utc,
+            'period_success_utc':self.period_success_utc, 'report_source':REPORT_SOURCE,
+            'component_values':self.component_values, 'calendar_months':self.months,
+            'selected_month':self.selected_month, 'calendar_capture_utc':self.calendar_capture_utc,
+        })
+
+    async def async_select_month(self, key):
+        if key not in self.months:
+            raise HomeAssistantError('Mese non disponibile')
+        self.selected_month = key
+        self.async_update_listeners()
+        try:
+            await self.async_save_snapshot()
+        except (ValueError,OSError,HomeAssistantError):
+            raise HomeAssistantError('Mese selezionato; salvataggio locale fallito') from None
 
     async def async_update_manually(self):
         if self._busy:
@@ -142,13 +193,24 @@ class ManualEnergyCoordinator(DataUpdateCoordinator):
             for key in self.updated_periods:
                 merged[key] = fresh[key]
                 self.period_success_utc[key] = self.last_success_utc
+                detail = self.period_details[key]
+                self.component_values[key] = {
+                    'pdc':round(math.fsum(detail['pompa_di_calore_kwh']),3),
+                    'resistenza':round(math.fsum(detail['resistenza_kwh']),3),
+                }
+            current_months = calendar_months(self.period_details,
+                datetime.fromisoformat(self.last_success_utc),self.hass.config.time_zone)
+            for record in current_months.values():
+                record['last_success_utc'] = self.last_success_utc
+            self.months.update(current_months)
+            self.calendar_capture_utc = self.last_success_utc
+            if self.selected_month not in self.months:
+                self.selected_month = max(self.months,default=None)
             self.state = 'aggiornato_parzialmente' if self.missing_periods else 'aggiornato'
             # A valid cloud snapshot is visible even if persisting it fails.
             self.async_set_updated_data(merged)
             try:
-                await self._store.async_save({'readings': merged, 'last_success_utc': self.last_success_utc,
-                                             'period_success_utc': self.period_success_utc,
-                                             'report_source': REPORT_SOURCE})
+                await self.async_save_snapshot()
             except asyncio.CancelledError:
                 self.state = 'aggiornato_non_salvato'
                 self.last_error = 'Lettura riuscita; salvataggio locale interrotto'

@@ -1,9 +1,9 @@
 {
-  "title": "FP Ariston Consumi Manuali",
+  "title": "Ariston FP",
   "config": {
     "step": {
       "user": {
-        "title": "FP Ariston",
+        "title": "Ariston FP",
         "description": "Sign in to Ariston. State and temperatures are polled; energy is requested only by Refresh consumption. Keep the old integration for rollback and disable it during testing to avoid concurrent sessions.",
         "data": {
           "username": "Email Ariston",

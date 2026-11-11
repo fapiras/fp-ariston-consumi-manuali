@@ -1,13 +1,14 @@
 """Lydos Hybrid consumption channels, keyed explicitly by API kind and period.
 
 Keys 8/9 and period codes 1..4 follow the vendored upstream client.
-Period boundaries are provided by Ariston; no calendar month is inferred.
+Calendar alignment is handled separately by calendar_report, verified against
+a dated export. This parser only validates the raw channel sequences.
 """
 import math
 
 from .energy_report import PERIOD_KEYS, ReportValidationError
 
-REPORT_SOURCE = 'lydos_hybrid_channels_v1'
+REPORT_SOURCE = 'lydos_hybrid_calendar_v2'
 HYBRID_REPORT_PATH = '/remote/reports/{gateway}/consSequencesApi8?usages=DhwHeatingPumpElec%2CDhwResistorElec'
 
 

@@ -45,6 +45,8 @@ async def async_setup_entry(
             )
 
     async_add_entities(ariston_select)
+    from .month_select import async_setup_entry as setup_month
+    await setup_month(hass, entry, async_add_entities)
 
 
 class AristonSelect(AristonEntity, SelectEntity):
