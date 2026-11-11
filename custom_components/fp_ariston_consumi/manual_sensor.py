@@ -47,8 +47,15 @@ class FPManualEnergySensor(CoordinatorEntity, SensorEntity):
     @property
     def extra_state_attributes(self):
         c = self.coordinator
-        return {'solo_su_richiesta': True, 'dato_non_aggiornato': c.stale,
-                'ultimo_tentativo_utc': c.last_attempt_utc, 'ultimo_successo_utc': c.last_success_utc,
+        key = self.entity_description.key
+        is_period = key in PERIOD_KEYS
+        fresh_period = (key in c.updated_periods and c.state in ('aggiornato', 'aggiornato_parzialmente'))
+        return {'solo_su_richiesta': True, 'dato_non_aggiornato': not fresh_period if is_period else c.stale,
+                'ultimo_tentativo_utc': c.last_attempt_utc,
+                'ultimo_successo_utc': c.period_success_utc.get(key) if is_period else c.last_success_utc,
+                'ultimo_successo_periodo_utc': c.period_success_utc.get(key) if is_period else None,
+                'periodi_aggiornati': c.updated_periods,
+                'periodi_non_disponibili': c.missing_periods,
                 'ultimo_errore': c.last_error,
                 'struttura_report': c.report_diagnostics,
                 'nota': 'Totali dei periodi API; non contatore dalla prima installazione'}

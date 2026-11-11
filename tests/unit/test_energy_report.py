@@ -27,6 +27,19 @@ def test_missing_buckets_have_specific_safe_error():
         module.parse_period_report([{'v':[1,None]}]*4)
 
 
+def test_empty_day_and_week_do_not_discard_month_and_year():
+    report = [{'v':[]}, {'v':[]}, {'v':[1]*15}, {'v':[2]*12}]
+    assert module.parse_period_report(report) == {
+        'day_kwh':None, 'week_kwh':None, 'month_kwh':15, 'year_kwh':24,
+    }
+
+
+def test_zero_is_a_valid_reading_even_with_empty_other_periods():
+    assert module.parse_period_report([{'v':[]}, {'v':[0]}, {'v':[]}, {'v':[]}]) == {
+        'day_kwh':None, 'week_kwh':0, 'month_kwh':None, 'year_kwh':None,
+    }
+
+
 def test_structure_does_not_expose_response_values_or_unknown_keys():
     payload = {'secret-token':'secret-value','reports':[{'gw':'private-device'}]}
     assert module.report_structure(payload) == {'tipo':'dict','elementi':2,'campi_noti':{'reports':'list'}}

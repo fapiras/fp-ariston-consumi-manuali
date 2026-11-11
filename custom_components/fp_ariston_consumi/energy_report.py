@@ -25,7 +25,7 @@ def report_structure(payload: Any) -> dict:
         ]
     return result
 
-def parse_period_report(payload: Any) -> dict[str, float]:
+def parse_period_report(payload: Any) -> dict[str, float | None]:
     """Validate period buckets; never silently count incomplete data as zero."""
     if payload is None:
         raise ReportValidationError('Nessun report energetico restituito: risposta vuota o endpoint non disponibile')
@@ -35,9 +35,12 @@ def parse_period_report(payload: Any) -> dict[str, float]:
         raise ReportValidationError(f'Report energetico: attesi 4 periodi, ricevuti {len(payload)}')
     totals = {}
     for key, record in zip(PERIOD_KEYS, payload, strict=True):
-        if not isinstance(record, dict) or not isinstance(record.get('v'), list) or not record['v']:
-            raise ReportValidationError(f'Report {key}: elenco dei consumi assente o vuoto')
+        if not isinstance(record, dict) or not isinstance(record.get('v'), list):
+            raise ReportValidationError(f'Report {key}: elenco dei consumi assente o non valido')
         values = record['v']
+        if not values:
+            totals[key] = None
+            continue
         if any(type(v) not in (int, float) or not math.isfinite(v) or v < 0 for v in values):
             missing = sum(v is None for v in values)
             if missing:
@@ -47,5 +50,7 @@ def parse_period_report(payload: Any) -> dict[str, float]:
         if not math.isfinite(total):
             raise ValueError('Invalid total')
         totals[key] = round(total, 3)
+    if all(value is None for value in totals.values()):
+        raise ReportValidationError('Nessun periodo energetico disponibile: tutti gli elenchi sono vuoti')
     return totals
 

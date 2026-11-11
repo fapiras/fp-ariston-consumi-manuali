@@ -1,6 +1,17 @@
 # FP Ariston Consumi Manuali
 
-**0.3.0-beta.2 — integrazione autonoma per Ariston Lydos Hybrid, da collaudare sul proprio impianto.**
+**0.3.0-beta.3 — integrazione autonoma per Ariston Lydos Hybrid, da collaudare sul proprio impianto.**
+
+La beta.3 gestisce i report parziali: se gli elenchi giornaliero e settimanale
+sono vuoti, mensile e annuale vengono comunque letti e salvati quando validi.
+Lo stato diventa `aggiornato_parzialmente`. Un periodo vuoto rimane sconosciuto
+oppure conserva l'ultimo dato valido, segnalato come non aggiornato e con la
+propria data di lettura. I mancanti non diventano zero. Gli attributi
+`periodi_aggiornati`, `periodi_non_disponibili` e `ultimo_successo_periodo_utc`
+permettono di distinguere le letture recenti da quelle conservate. La data
+generale dell'ultimo successo indica l'ultima lettura di almeno un periodo valido.
+Se tutti i periodi sono vuoti oppure il formato è malformato, la lettura dà errore
+e conserva lo snapshot precedente. Il collaudo dei valori reali resta necessario.
 
 La beta.2 distingue risposta vuota, numero di periodi inatteso e consumi mancanti.
 Se la lettura fallisce, copia il messaggio esatto e l'attributo `struttura_report`

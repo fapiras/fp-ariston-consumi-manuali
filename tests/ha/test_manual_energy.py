@@ -109,6 +109,53 @@ async def test_empty_response_is_distinguished_without_overwriting_cache(hass):
     assert c.report_diagnostics == {'tipo':'NoneType'}
 
 
+async def test_user_report_shape_updates_month_year_and_restores_partial_cache(hass):
+    c = make_coordinator(hass)
+    c.device.api._async_get.return_value = [{'v':[]}, {'v':[]}, {'v':[1]*15}, {'v':[2]*12}]
+    await c.async_update_manually()
+    assert c.state == 'aggiornato_parzialmente'
+    assert c.data == {'day_kwh':None, 'week_kwh':None, 'month_kwh':15, 'year_kwh':24}
+    assert c.updated_periods == ['month_kwh','year_kwh']
+    assert c.missing_periods == ['day_kwh','week_kwh']
+    assert c.period_success_utc['day_kwh'] is None
+    assert c.period_success_utc['month_kwh'] == c.last_success_utc
+    restored = make_coordinator(hass)
+    await restored.async_restore_cache()
+    assert restored.data == c.data
+    assert restored.period_success_utc == c.period_success_utc
+    assert restored.updated_periods == []
+    restored.device.api._async_get.assert_not_awaited()
+
+
+async def test_partial_read_preserves_missing_period_values_dates_and_marks_stale(hass):
+    from custom_components.fp_ariston_consumi.manual_sensor import FPManualEnergySensor, SENSOR_TYPES
+    c = make_coordinator(hass)
+    await c.async_update_manually()
+    old_stamp = c.period_success_utc['day_kwh']
+    c.device.api._async_get.return_value = [{'v':[]}, {'v':[]}, {'v':[8]}, {'v':[90]}]
+    await c.async_update_manually()
+    assert c.data == {'day_kwh':3, 'week_kwh':3, 'month_kwh':8, 'year_kwh':90}
+    day = FPManualEnergySensor(c, None, SENSOR_TYPES[0], None)
+    month = FPManualEnergySensor(c, None, SENSOR_TYPES[2], None)
+    assert day.extra_state_attributes['dato_non_aggiornato'] is True
+    assert day.extra_state_attributes['ultimo_successo_utc'] == old_stamp
+    assert month.extra_state_attributes['dato_non_aggiornato'] is False
+    assert month.extra_state_attributes['ultimo_successo_utc'] == c.last_success_utc
+
+
+async def test_all_empty_reports_keep_previous_snapshot_and_dates(hass):
+    c = make_coordinator(hass)
+    await c.async_update_manually()
+    previous, dates, stamp = dict(c.data), dict(c.period_success_utc), c.last_success_utc
+    c.device.api._async_get.return_value = [{'v':[]}]*4
+    with pytest.raises(HomeAssistantError, match='tutti gli elenchi sono vuoti'):
+        await c.async_update_manually()
+    assert c.data == previous
+    assert c.period_success_utc == dates
+    assert c.last_success_utc == stamp
+    assert c.updated_periods == []
+
+
 async def test_storage_failure_keeps_valid_reading_visible(hass):
     c = make_coordinator(hass)
     c._store = SimpleNamespace(async_save=AsyncMock(side_effect=OSError('disk full')))

@@ -53,6 +53,9 @@ class ManualEnergyCoordinator(DataUpdateCoordinator):
         self.last_attempt_utc = None
         self.last_error = None
         self.report_diagnostics = None
+        self.updated_periods = []
+        self.missing_periods = []
+        self.period_success_utc = dict.fromkeys(PERIOD_KEYS)
         self.state = 'mai_aggiornato'
         self._busy = False
 
@@ -71,15 +74,28 @@ class ManualEnergyCoordinator(DataUpdateCoordinator):
                 return
             readings = stored['readings']
             valid = {key: readings[key] for key in PERIOD_KEYS}
-            if any(type(v) not in (int, float) or not math.isfinite(v) or v < 0 for v in valid.values()):
+            if any(v is not None and (type(v) not in (int, float) or not math.isfinite(v) or v < 0) for v in valid.values()):
                 raise ValueError('Invalid cache')
+            if all(v is None for v in valid.values()):
+                raise ValueError('Empty cache')
             stamp = datetime.fromisoformat(stored['last_success_utc'])
             if stamp.tzinfo is None:
                 raise ValueError('Invalid timestamp')
+            saved_periods = stored.get('period_success_utc')
+            period_times = dict.fromkeys(PERIOD_KEYS)
+            for key, value in valid.items():
+                if value is None:
+                    continue
+                # Older complete snapshots had one timestamp for all periods.
+                period_stamp = datetime.fromisoformat(saved_periods[key]) if isinstance(saved_periods, dict) else stamp
+                if period_stamp.tzinfo is None:
+                    raise ValueError('Invalid period timestamp')
+                period_times[key] = period_stamp.isoformat()
         except (KeyError, TypeError, ValueError, OSError):
             _LOGGER.warning('Previous manual energy snapshot is missing or invalid')
             return
         self.last_success_utc = stamp.isoformat()
+        self.period_success_utc = period_times
         self.state = 'dati_memorizzati'
         self.async_set_updated_data(valid)
 
@@ -87,6 +103,9 @@ class ManualEnergyCoordinator(DataUpdateCoordinator):
         if self._busy:
             raise HomeAssistantError('Aggiornamento consumi già in corso')
         self._busy = True
+        self.updated_periods = []
+        self.missing_periods = []
+        self.report_diagnostics = None
         self.last_attempt_utc = datetime.now(timezone.utc).isoformat()
         self.state = 'lettura_in_corso'
         self.async_update_listeners()
@@ -111,11 +130,18 @@ class ManualEnergyCoordinator(DataUpdateCoordinator):
         else:
             self.last_success_utc = datetime.now(timezone.utc).isoformat()
             self.last_error = None
-            self.state = 'aggiornato'
+            self.updated_periods = [key for key, value in fresh.items() if value is not None]
+            self.missing_periods = [key for key, value in fresh.items() if value is None]
+            merged = dict(self.data)
+            for key in self.updated_periods:
+                merged[key] = fresh[key]
+                self.period_success_utc[key] = self.last_success_utc
+            self.state = 'aggiornato_parzialmente' if self.missing_periods else 'aggiornato'
             # A valid cloud snapshot is visible even if persisting it fails.
-            self.async_set_updated_data(fresh)
+            self.async_set_updated_data(merged)
             try:
-                await self._store.async_save({'readings': fresh, 'last_success_utc': self.last_success_utc})
+                await self._store.async_save({'readings': merged, 'last_success_utc': self.last_success_utc,
+                                             'period_success_utc': self.period_success_utc})
             except asyncio.CancelledError:
                 self.state = 'aggiornato_non_salvato'
                 self.last_error = 'Lettura riuscita; salvataggio locale interrotto'
