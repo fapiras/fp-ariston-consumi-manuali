@@ -1,0 +1,15 @@
+{
+  "domain": "fp_ariston_consumi",
+  "name": "FP Ariston Consumi Manuali",
+  "version": "0.2.0",
+  "codeowners": [],
+  "config_flow": true,
+  "dependencies": [
+    "ariston_net"
+  ],
+  "documentation": "https://github.com/fapiras/fp-ariston-consumi-manuali",
+  "iot_class": "cloud_push",
+  "integration_type": "device",
+  "requirements": [],
+  "issue_tracker": "https://github.com/fapiras/fp-ariston-consumi-manuali/issues"
+}
