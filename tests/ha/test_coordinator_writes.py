@@ -11,6 +11,7 @@ from custom_components.fp_ariston_consumi.coordinator import (
 
 
 def _coordinator_for(device) -> DeviceDataUpdateCoordinator:
+    device.async_update_settings = AsyncMock()
     coordinator = DeviceDataUpdateCoordinator.__new__(DeviceDataUpdateCoordinator)
     coordinator.device = device
     coordinator.pending_writes = {}

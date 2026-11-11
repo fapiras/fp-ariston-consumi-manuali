@@ -23,3 +23,11 @@ jobs:
           python-version: '3.14'
       - run: pip install pytest-homeassistant-custom-component==0.13.375 requests
       - run: python -m pytest tests/ha -q
+  hacs-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hacs/action@main
+        with:
+          category: integration
+          ignore: description topics
