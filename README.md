@@ -1,6 +1,21 @@
 # FP Ariston Consumi Manuali
 
-**0.3.0-beta.3 — integrazione autonoma per Ariston Lydos Hybrid, da collaudare sul proprio impianto.**
+**0.3.0-beta.4 — integrazione autonoma per Ariston Lydos Hybrid, da collaudare sul proprio impianto.**
+
+La beta.4 sostituisce il report generico `velis/reports?usages=Dhw` con le sequenze
+specifiche del Lydos Hybrid già usate dal client originale:
+`remote/reports/…/consSequencesApi8?usages=DhwHeatingPumpElec%2CDhwResistorElec`.
+Legge separatamente pompa di calore (codice 8) e resistenza (codice 9), identificando
+i periodi tramite `p`, senza dipendere dall'ordine delle righe. Un totale è
+pubblicato solo se entrambe le componenti hanno elenchi validi della stessa
+lunghezza. Uno zero esplicito è valido; una componente mancante non vale zero.
+L'attributo `dettaglio_periodo` contiene i valori delle due sequenze in kWh per
+confrontarli con l'app. Gli estremi dei periodi non sono ancora certificati:
+non confrontare un totale di intervallo con un singolo mese selezionato nell'app.
+Le cache delle beta precedenti vengono ignorate, per non mantenere gli zero
+restituiti dalla vecchia richiesta generica. Se il nuovo endpoint restituisce
+HTTP 500, l'errore viene mostrato senza ripiegare silenziosamente sul vecchio
+report zero. Nessuna richiesta energetica parte automaticamente.
 
 La beta.3 gestisce i report parziali: se gli elenchi giornaliero e settimanale
 sono vuoti, mensile e annuale vengono comunque letti e salvati quando validi.

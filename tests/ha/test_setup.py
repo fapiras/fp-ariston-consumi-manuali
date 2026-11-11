@@ -1,5 +1,6 @@
 """Load actual HA platforms and preserve all dashboard control types."""
 from unittest.mock import AsyncMock, MagicMock, patch
+from .energy_fixtures import wire
 from datetime import timedelta
 
 from homeassistant.const import CONF_DEVICE, CONF_PASSWORD, CONF_USERNAME
@@ -37,7 +38,7 @@ def fake_device(gateway='fake-gw', name='Boiler A'):
                      SeDeviceSettings.SE_ANTI_COOLING_TEMPERATURE:10,
                      SeDeviceSettings.SE_MAX_GREEN_SETPOINT_TEMPERATURE:55})
     api.async_get_velis_plant_settings = AsyncMock(return_value=settings)
-    api._async_get = AsyncMock(return_value=[{'v':[1]}]*4)
+    api._async_get = AsyncMock(return_value=wire([{'v':[1]}]*4))
     api.async_get_consumptions_sequences = AsyncMock()
     api.async_get_energy_account = AsyncMock()
     api.async_set_velis_power = AsyncMock()

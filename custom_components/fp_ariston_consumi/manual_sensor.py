@@ -7,6 +7,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import COORDINATOR, DOMAIN, MANUAL_ENERGY, PERIOD_KEYS
 from .entity import AristonEntity
+from .hybrid_report import REPORT_SOURCE
 
 SENSOR_TYPES = tuple(
     SensorEntityDescription(key=key, name=f'Consumo periodo {label}',
@@ -58,4 +59,6 @@ class FPManualEnergySensor(CoordinatorEntity, SensorEntity):
                 'periodi_non_disponibili': c.missing_periods,
                 'ultimo_errore': c.last_error,
                 'struttura_report': c.report_diagnostics,
+                'fonte_report': REPORT_SOURCE,
+                'dettaglio_periodo': c.period_details.get(key) if is_period else None,
                 'nota': 'Totali dei periodi API; non contatore dalla prima installazione'}

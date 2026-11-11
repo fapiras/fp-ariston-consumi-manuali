@@ -12,13 +12,14 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
-from .const import API_URL_SETTING, DOMAIN, LEGACY_REPORT_PATH, PERIOD_KEYS
+from .const import API_URL_SETTING, DOMAIN, PERIOD_KEYS
 from .vendor.ariston_net_api.const import ARISTON_API_URL
 
 _LOGGER = logging.getLogger(__name__)
 
 
-from .energy_report import ReportValidationError, parse_period_report, report_structure
+from .energy_report import ReportValidationError, report_structure
+from .hybrid_report import HYBRID_REPORT_PATH, REPORT_SOURCE, parse_hybrid_report
 
 
 def concise_error(error: Exception) -> str:
@@ -56,6 +57,7 @@ class ManualEnergyCoordinator(DataUpdateCoordinator):
         self.updated_periods = []
         self.missing_periods = []
         self.period_success_utc = dict.fromkeys(PERIOD_KEYS)
+        self.period_details = {}
         self.state = 'mai_aggiornato'
         self._busy = False
 
@@ -71,6 +73,10 @@ class ManualEnergyCoordinator(DataUpdateCoordinator):
         try:
             stored = await self._store.async_load()
             if not isinstance(stored, dict):
+                return
+            # Generic Dhw reports in beta.1..3 may contain unrelated zeroes.
+            # Never restore them as validated Hybrid electricity consumption.
+            if stored.get('report_source') != REPORT_SOURCE:
                 return
             readings = stored['readings']
             valid = {key: readings[key] for key in PERIOD_KEYS}
@@ -113,10 +119,10 @@ class ManualEnergyCoordinator(DataUpdateCoordinator):
             base = self.entry.data.get(API_URL_SETTING, ARISTON_API_URL)
             if not isinstance(base, str) or not base.startswith('https://'):
                 raise ValueError('Invalid API URL')
-            url = base.rstrip('/') + LEGACY_REPORT_PATH.format(gateway=quote(str(self.device.gateway), safe=''))
+            url = base.rstrip('/') + HYBRID_REPORT_PATH.format(gateway=quote(str(self.device.gateway), safe=''))
             payload = await self.device.api._async_get(url)
             self.report_diagnostics = report_structure(payload)
-            fresh = parse_period_report(payload)
+            fresh, self.period_details = parse_hybrid_report(payload)
         except asyncio.CancelledError:
             self.last_error = 'Lettura interrotta'
             self.state = 'errore'
@@ -141,7 +147,8 @@ class ManualEnergyCoordinator(DataUpdateCoordinator):
             self.async_set_updated_data(merged)
             try:
                 await self._store.async_save({'readings': merged, 'last_success_utc': self.last_success_utc,
-                                             'period_success_utc': self.period_success_utc})
+                                             'period_success_utc': self.period_success_utc,
+                                             'report_source': REPORT_SOURCE})
             except asyncio.CancelledError:
                 self.state = 'aggiornato_non_salvato'
                 self.last_error = 'Lettura riuscita; salvataggio locale interrotto'
