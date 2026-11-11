@@ -1,20 +1,44 @@
 {
+  "title": "FP Ariston Consumi Manuali",
   "config": {
     "step": {
       "user": {
-        "title": "FP Ariston Manual Energy",
-        "description": "Choose a water heater configured in Ariston NET. Energy is read only when you press Refresh energy.",
+        "title": "FP Ariston",
+        "description": "Sign in to Ariston. State and temperatures are polled; energy is requested only by Refresh consumption. Keep the old integration for rollback and disable it during testing to avoid concurrent sessions.",
         "data": {
-          "device": "Ariston NET device"
+          "username": "Email Ariston",
+          "password": "Password"
+        }
+      },
+      "select": {
+        "title": "Select Lydos Hybrid",
+        "data": {
+          "select_device": "Water heater"
         }
       }
     },
     "abort": {
-      "ariston_missing": "Configure a device in Ariston NET first.",
-      "already_configured": "This device is already configured."
+      "already_configured": "Device already configured",
+      "reauth_successful": "Authentication updated"
     },
     "error": {
-      "invalid_device": "Invalid device."
+      "invalid_auth": "Invalid Ariston credentials",
+      "cannot_connect": "Cannot connect to Ariston; try again later",
+      "no_devices": "No Lydos Hybrid found",
+      "wrong_device": "Select the originally configured device",
+      "invalid_device": "Invalid device",
+      "unknown": "Unexpected cloud response"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "State and temperatures",
+        "description": "Energy always remains manual.",
+        "data": {
+          "scan_interval": "State polling interval (seconds, minimum 60)"
+        }
+      }
     }
   }
 }

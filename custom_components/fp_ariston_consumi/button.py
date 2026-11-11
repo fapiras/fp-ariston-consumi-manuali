@@ -1,31 +1,26 @@
-"""User-controlled energy refresh only."""
-from __future__ import annotations
+"""Explicit manual consumption action."""
 from homeassistant.components.button import ButtonEntity
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceInfo
-from .const import DOMAIN
-from .reader import ManualEnergyCoordinator
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities):
-    coordinator: ManualEnergyCoordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities([RefreshEnergyButton(coordinator, entry)])
+from .const import COORDINATOR, DOMAIN, MANUAL_ENERGY
+from .entity import AristonEntity
+from .manual_sensor import SENSOR_TYPES
+
+
+async def async_setup_entry(hass, entry, async_add_entities):
+    runtime = hass.data[DOMAIN][entry.unique_id]
+    device_info = AristonEntity(runtime[COORDINATOR], SENSOR_TYPES[0]).device_info
+    async_add_entities([RefreshEnergyButton(runtime[MANUAL_ENERGY], device_info)])
+
 
 class RefreshEnergyButton(ButtonEntity):
-    """Trigger one on-demand API read."""
     _attr_has_entity_name = True
-    _attr_name = "Aggiorna consumi"
-    _attr_icon = "mdi:refresh"
+    _attr_name = 'Aggiorna consumi'
+    _attr_icon = 'mdi:refresh'
 
-    def __init__(self, coordinator: ManualEnergyCoordinator, entry: ConfigEntry):
+    def __init__(self, coordinator, device_info):
         self.coordinator = coordinator
-        self._attr_unique_id = f"{entry.unique_id}_aggiorna_consumi"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, entry.unique_id or entry.entry_id)},
-            name=entry.title,
-            manufacturer="FP / Ariston (API cloud non ufficiale)",
-            model="Lydos Hybrid: consumi su richiesta",
-        )
+        self._attr_unique_id = f'{DOMAIN}:{coordinator.device.gateway}:energy:aggiorna_consumi'
+        self._attr_device_info = device_info
 
-    async def async_press(self) -> None:
+    async def async_press(self):
         await self.coordinator.async_update_manually()

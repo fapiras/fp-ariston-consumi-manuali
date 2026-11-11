@@ -1,20 +1,44 @@
 {
+  "title": "FP Ariston Consumi Manuali",
   "config": {
     "step": {
       "user": {
-        "title": "FP Ariston Consumi Manuali",
-        "description": "Seleziona uno scaldabagno già configurato in Ariston NET. I consumi saranno letti solo premendo Aggiorna consumi.",
+        "title": "FP Ariston",
+        "description": "Accedi al tuo account Ariston. La lettura di stato e temperature è periodica; i consumi vengono richiesti soltanto con Aggiorna consumi. Conserva la vecchia integrazione per il ripristino e disabilitala durante il collaudo per evitare sessioni concorrenti.",
         "data": {
-          "device": "Dispositivo Ariston NET"
+          "username": "Email Ariston",
+          "password": "Password"
+        }
+      },
+      "select": {
+        "title": "Seleziona Lydos Hybrid",
+        "data": {
+          "select_device": "Scaldabagno"
         }
       }
     },
     "abort": {
-      "ariston_missing": "Configura prima un dispositivo in Ariston NET.",
-      "already_configured": "Questo dispositivo è già configurato."
+      "already_configured": "Dispositivo già configurato",
+      "reauth_successful": "Accesso aggiornato"
     },
     "error": {
-      "invalid_device": "Dispositivo non valido."
+      "invalid_auth": "Credenziali Ariston non valide",
+      "cannot_connect": "Cloud Ariston non raggiungibile; riprova più tardi",
+      "no_devices": "Nessun Lydos Hybrid trovato",
+      "wrong_device": "Seleziona lo stesso dispositivo configurato in precedenza",
+      "invalid_device": "Dispositivo non valido",
+      "unknown": "Risposta cloud inattesa"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Stato e temperature",
+        "description": "I consumi rimangono sempre manuali.",
+        "data": {
+          "scan_interval": "Intervallo stato e temperature (secondi, minimo 60)"
+        }
+      }
     }
   }
 }
