@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import timedelta
 
 from homeassistant.const import CONF_DEVICE, CONF_PASSWORD, CONF_USERNAME
+from homeassistant.config_entries import ConfigEntryState
 from homeassistant.helpers import entity_registry as er
 from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import MockConfigEntry, async_fire_time_changed
@@ -126,9 +127,10 @@ async def test_two_boilers_share_one_login_and_unload_independently(hass):
     with patch.object(Ariston,'async_connect',new=AsyncMock(return_value=True)) as login, patch.object(
         Ariston,'async_hello',side_effect=hello
     ):
-        for entry in entries:
-            assert await hass.config_entries.async_setup(entry.entry_id)
+        # Initial domain setup also loads its other configured entries.
+        assert await hass.config_entries.async_setup(entries[0].entry_id)
         await hass.async_block_till_done()
+        assert all(entry.state is ConfigEntryState.LOADED for entry in entries)
         login.assert_awaited_once()
         assert hass.states.get('switch.boiler_a_fp_power') is not None
         assert hass.states.get('switch.boiler_b_fp_power') is not None
