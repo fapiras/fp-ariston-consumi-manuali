@@ -18,12 +18,14 @@ from .vendor.ariston_net_api.const import ARISTON_API_URL
 _LOGGER = logging.getLogger(__name__)
 
 
-from .energy_report import parse_period_report
+from .energy_report import ReportValidationError, parse_period_report, report_structure
 
 
 def concise_error(error: Exception) -> str:
     """Expose an actionable error without copying cloud response bodies."""
     message = str(error).lower()
+    if isinstance(error, ReportValidationError):
+        return str(error)
     if '500' in message:
         return 'HTTP 500 dal cloud Ariston'
     if '429' in message or ('rate' in message and 'limit' in message):
@@ -50,6 +52,7 @@ class ManualEnergyCoordinator(DataUpdateCoordinator):
         self.last_success_utc = None
         self.last_attempt_utc = None
         self.last_error = None
+        self.report_diagnostics = None
         self.state = 'mai_aggiornato'
         self._busy = False
 
@@ -93,6 +96,7 @@ class ManualEnergyCoordinator(DataUpdateCoordinator):
                 raise ValueError('Invalid API URL')
             url = base.rstrip('/') + LEGACY_REPORT_PATH.format(gateway=quote(str(self.device.gateway), safe=''))
             payload = await self.device.api._async_get(url)
+            self.report_diagnostics = report_structure(payload)
             fresh = parse_period_report(payload)
         except asyncio.CancelledError:
             self.last_error = 'Lettura interrotta'

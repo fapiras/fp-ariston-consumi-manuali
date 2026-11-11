@@ -50,4 +50,5 @@ class FPManualEnergySensor(CoordinatorEntity, SensorEntity):
         return {'solo_su_richiesta': True, 'dato_non_aggiornato': c.stale,
                 'ultimo_tentativo_utc': c.last_attempt_utc, 'ultimo_successo_utc': c.last_success_utc,
                 'ultimo_errore': c.last_error,
+                'struttura_report': c.report_diagnostics,
                 'nota': 'Totali dei periodi API; non contatore dalla prima installazione'}

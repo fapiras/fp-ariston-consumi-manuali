@@ -98,6 +98,17 @@ async def test_corrupt_cache_does_not_contact_cloud(hass):
     c.device.api._async_get.assert_not_awaited()
 
 
+async def test_empty_response_is_distinguished_without_overwriting_cache(hass):
+    c = make_coordinator(hass)
+    await c.async_update_manually()
+    previous = dict(c.data)
+    c.device.api._async_get.return_value = None
+    with pytest.raises(HomeAssistantError, match='Nessun report energetico restituito'):
+        await c.async_update_manually()
+    assert c.data == previous
+    assert c.report_diagnostics == {'tipo':'NoneType'}
+
+
 async def test_storage_failure_keeps_valid_reading_visible(hass):
     c = make_coordinator(hass)
     c._store = SimpleNamespace(async_save=AsyncMock(side_effect=OSError('disk full')))

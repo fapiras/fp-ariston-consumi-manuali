@@ -1,6 +1,12 @@
 # FP Ariston Consumi Manuali
 
-**0.3.0-beta.1 — integrazione autonoma per Ariston Lydos Hybrid, da collaudare sul proprio impianto.**
+**0.3.0-beta.2 — integrazione autonoma per Ariston Lydos Hybrid, da collaudare sul proprio impianto.**
+
+La beta.2 distingue risposta vuota, numero di periodi inatteso e consumi mancanti.
+Se la lettura fallisce, copia il messaggio esatto e l'attributo `struttura_report`
+del sensore **Stato lettura consumi**. Contiene solo tipi, conteggi e nomi di campi
+predefiniti, senza valori cloud o identificativi. Questo aggiornamento aggiunge
+diagnostica: non certifica né ripara ancora la lettura sul dispositivo reale.
 
 Fork di Ariston NET di Mauro Priori / fustom, con client incluso in uno spazio
 privato. Nessuna dipendenza da `custom_components/ariston_net` e nessun accesso

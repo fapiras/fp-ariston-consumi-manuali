@@ -17,6 +17,22 @@ def test_totals_and_zero_are_valid():
     }
 
 
+def test_empty_report_has_specific_safe_error():
+    with pytest.raises(module.ReportValidationError, match='Nessun report'):
+        module.parse_period_report(None)
+
+
+def test_missing_buckets_have_specific_safe_error():
+    with pytest.raises(module.ReportValidationError, match='1 valori mancanti su 2'):
+        module.parse_period_report([{'v':[1,None]}]*4)
+
+
+def test_structure_does_not_expose_response_values_or_unknown_keys():
+    payload = {'secret-token':'secret-value','reports':[{'gw':'private-device'}]}
+    assert module.report_structure(payload) == {'tipo':'dict','elementi':2,'campi_noti':{'reports':'list'}}
+    assert module.report_structure([{'v':[123,None]}]) == {'tipo':'list','elementi':1,'periodi':[{'tipo':'dict','valori':2}]}
+
+
 @pytest.mark.parametrize('value', [None, True, False, -1, math.nan, math.inf, -math.inf, '1', {}, []])
 def test_invalid_buckets_cannot_become_energy(value):
     with pytest.raises(ValueError):
